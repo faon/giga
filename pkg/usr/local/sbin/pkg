@@ -1,0 +1,126 @@
+SAFEBIN='/home/safe'
+
+NODE=$( uname -n | cut -d. -f1 )
+if [ $NODE = 'nas01' ]
+then
+  PKG=/safe/ROCKS/pkg  
+else
+  PKG=/home/safe/ROCKS/pkg
+fi
+
+# ----------------
+MODE=debug
+
+if [ -z $1 ] || [ $1 = "-h" ]
+then
+  echo "PKG handler ----------------------------------------------- AE 2011-08"
+  echo "Simple installer of root based TGZ packages (stored in $PKG)"
+  echo "Usage: pkg [-i|-l|-c] name"
+  echo "               name : display the informations without installation" 
+  echo "            -i name : install the last version of this package (based on /)"
+  echo "            -I name : idem (based on $SAFEBIN)" 
+  echo "            -l [name] : list all the packages, beginning with [name]"
+  echo "            -c name [path] : create the dev tree"    
+  echo "            -p [name] : pack the current directory and store it as name [default : path name]"
+  exit
+fi
+
+if [ $1 = "-i" ]
+then
+  shift
+  MODE=install
+  TARG=$1; shift
+fi
+
+if [ $1 = "-I" ]
+then
+  shift
+  MODE=INSTALL
+  TARG=$1; shift
+fi
+
+if [ $1 = "-l" ]
+then
+  shift
+  MODE=list
+  TARG=$1; shift
+fi
+
+if [ $1 = "-p" ]
+then
+  shift
+  MODE=pack
+  TARG=$1; shift
+fi
+
+if [ $1 = "-c" ]
+then
+  shift
+  MODE=create
+  TARG=$1; shift
+  PTH=$1; shift
+fi
+
+# -----------------------------------------------
+
+LAST=$( ls $PKG/$TARG* | tail -1 )
+echo "Node=$NODE PkgDir=$PKG"
+echo "Last $TARG is $LAST"
+
+if [ $MODE = 'list' ]
+then
+     ls -l $PKG/$TARG*tgz  # works for TARG=''
+     exit
+fi
+
+if [ -z $LAST ]
+then
+  echo "LAST $TARG is invalid"
+  exit
+fi
+
+if [ $MODE = 'install' ]
+then
+  cd /
+  tar -xzvf $LAST
+  exit
+fi
+
+if [ $MODE = 'INSTALL' ]
+then
+  cd $SAFEBIN
+  tar -xzvf $LAST
+  exit
+fi
+
+if [ $MODE = 'pack' ]
+then
+  if [ -z $TARG ]
+  then 
+    TARG=$( echo $PWD | cut -d/ -f3 )  # pis-aller
+  fi
+  TM=$( date +%y%m%d-%H%M )
+  TGZ=${PKG}/${TARG}-${TM}.tgz
+  echo -n ".. saving $TGZ (or CTRL-C) : "
+  read answ
+  tar -czvf $TGZ *
+  exit
+fi
+
+if [ $MODE = 'create' ]
+then
+  if [ -z $PTH ]
+  then
+     PTH=/usr/local/sbin
+  elif [ ! -d $PTH ]
+  then
+     echo "$PTH is invalid"
+     exit 1
+  fi
+  TREE="$PWD/$TARG$PTH"  
+  echo ".. Creating the dev tree $TREE for $TARG"
+  mkdir -p $TREE
+  exit
+fi
+
+
