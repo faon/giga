@@ -1,9 +1,10 @@
-VERSION=0.1
+VERSION=AE:2011-08-08
 
 # ---------------------------------- Config -----------------------------------------------
    SAFEBIN='/home/safe'  # where to share the executables, in place to local '/'
    PREFIX='/opt/pkg'     # where to develop the packages, with  git control
-   RANK=3                # to find the package name (for cut -fRANK : ex /opt/pkg/PACKAGE
+   IDX=4                 # to find the package name (for cut -d/ -fIDX 
+                         #    ex /opt/pkg/PACKAGE, IDX=4 : 1/2:opt/3:pkg/4:PACKAGE
 # -----------------------------------------------------------------------------------------
 
 NODE=$( uname -n | cut -d. -f1 )
@@ -28,6 +29,7 @@ then
   echo "            -l [name] : list all the packages, beginning with [name]"
   echo "            -c name [path] : create the dev tree"    
   echo "            -p [name] : pack the current directory and store it as name [default : path name]"
+  echo "            -t [name] : table-of-content of package name"
   exit
 fi
 
@@ -46,6 +48,12 @@ fi
 if [ $1 = "-l" ]
 then
   MODE=list
+  TARG=$2
+fi
+
+if [ $1 = "-t" ]
+then
+  MODE=toc
   TARG=$2
 fi
 
@@ -98,12 +106,14 @@ if [ $MODE = 'pack' ]
 then
   if [ -z $TARG ]
   then 
-    TARG=$( echo $PWD | cut -d/ -f$RANK )  # pis-aller
+    TARG=$( echo $PWD | cut -d/ -f$IDX )  # pis-aller
   fi
   TM=$( date +%y%m%d-%H%M )
   TGZ=${PKG}/${TARG}-${TM}.tgz
-  echo -n ".. saving $TGZ (or CTRL-C) : "
-  read answ
+  BASE=$( pwd | cut -d/ -f1-${IDX} )
+  echo -n ".. saving $TGZ from $BASE (or CTRL-C) : "
+  read answ 
+  cd $BASE
   tar -czvf $TGZ *
   exit
 fi
@@ -124,4 +134,13 @@ then
   exit
 fi
 
+if [ $MODE = 'toc' ]
+then
+  echo
+  echo "----------------------------------------------------------------------------------------------------"
+  echo "TOC of $LAST"
+  echo
+  tar -tzvf $LAST
+
+fi
 
