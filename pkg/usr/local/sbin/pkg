@@ -1,4 +1,10 @@
-SAFEBIN='/home/safe'
+VERSION=0.1
+
+# ---------------------------------- Config -----------------------------------------------
+   SAFEBIN='/home/safe'  # where to share the executables, in place to local '/'
+   PREFIX='/opt/pkg'     # where to develop the packages, with  git control
+   RANK=3                # to find the package name (for cut -fRANK : ex /opt/pkg/PACKAGE
+# -----------------------------------------------------------------------------------------
 
 NODE=$( uname -n | cut -d. -f1 )
 if [ $NODE = 'nas01' ]
@@ -97,7 +103,7 @@ if [ $MODE = 'pack' ]
 then
   if [ -z $TARG ]
   then 
-    TARG=$( echo $PWD | cut -d/ -f3 )  # pis-aller
+    TARG=$( echo $PWD | cut -d/ -f$RANK )  # pis-aller
   fi
   TM=$( date +%y%m%d-%H%M )
   TGZ=${PKG}/${TARG}-${TM}.tgz
