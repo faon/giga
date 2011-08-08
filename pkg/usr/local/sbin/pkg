@@ -33,38 +33,33 @@ fi
 
 if [ $1 = "-i" ]
 then
-  shift
   MODE=install
-  TARG=$1; shift
+  TARG=$2
 fi
 
 if [ $1 = "-I" ]
 then
-  shift
   MODE=INSTALL
-  TARG=$1; shift
+  TARG=$2
 fi
 
 if [ $1 = "-l" ]
 then
-  shift
   MODE=list
-  TARG=$1; shift
+  TARG=$2
 fi
 
 if [ $1 = "-p" ]
 then
-  shift
   MODE=pack
-  TARG=$1; shift
+  TARG=$2
 fi
 
 if [ $1 = "-c" ]
 then
-  shift
   MODE=create
-  TARG=$1; shift
-  PTH=$1; shift
+  TARG=$2
+  PTH=$3
 fi
 
 # -----------------------------------------------
