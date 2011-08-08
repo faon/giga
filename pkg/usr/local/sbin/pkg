@@ -115,6 +115,7 @@ then
   read answ 
   cd $BASE
   tar -czvf $TGZ *
+  git commit -a 
   exit
 fi
 
