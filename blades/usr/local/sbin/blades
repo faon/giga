@@ -1,0 +1,28 @@
+USER=alain
+RFE=139.165.108.214
+
+TUNNELPID=/tmp/tunnel.pid
+
+if [ -z $1 ]
+then
+  echo ".. tunnel for the HTTP port "
+    ssh -fNXC $USER@$RFE   -L 8080:ipmi-0-0:80
+  echo ".. tunnel for the KVM  port "
+    ssh -fNXC $USER@$RFE   -L 3900:ipmi-0-0:3900
+
+  KILL=`ps ax | grep -v grep | grep fNXC | cut -d' ' -f1`
+  echo $KILL > $TUNNELPID
+
+  echo -e "\n\nTo connect directly to the AMM Blade Center, use :"
+  echo "    http://localhost:8080"
+  echo -e "\nTo kill the tunnels, use "
+  echo "    blades -k"
+else
+  if [ $1 = '-k' ]
+  then
+    KILL=`cat $TUNNELPID`
+    echo ".. killing $KILL processes"
+    kill $KILL
+  fi    
+fi
+
