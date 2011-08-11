@@ -1,84 +1,97 @@
-VERSION=AE:2011-08-08
+#!/bin/bash
+
+
+VERSION=AE:2011-08-11
 
 # ---------------------------------- Config -----------------------------------------------
-   SAFEBIN='/home/safe'  # where to share the executables, in place to local '/'
-   PREFIX='/opt/pkg'     # where to develop the packages, with  git control
+   LOCAL='/'            # where to install from (default to '/'
+   SHARED='/home/safe'  # where to share the executables, in place to local '/'
+   DEVEL='/opt/pkg'     # where to develop the packages, with  git control
+   STORE='/home/safe/ROCKS/pkg' # where to store the packages
    IDX=4                 # to find the package name (for cut -d/ -fIDX 
                          #    ex /opt/pkg/PACKAGE, IDX=4 : 1/2:opt/3:pkg/4:PACKAGE
+   
 # -----------------------------------------------------------------------------------------
 
+# -- TODO : create a sumbolic link on nas01 to avoid this :
 NODE=$( uname -n | cut -d. -f1 )
 if [ $NODE = 'nas01' ]
 then
-  PKG=/safe/ROCKS/pkg  
+  STORE=/safe/ROCKS/pkg  
 else
-  PKG=/home/safe/ROCKS/pkg
+  STORE=/home/safe/ROCKS/pkg
 fi
 
 # ----------------
+
 MODE=debug
 
-if [ -z $1 ] || [ $1 = "-h" ]
-then
-  echo "PKG handler ----------------------------------------------- AE 2011-08"
-  echo "Simple installer of root based TGZ packages (stored in $PKG)"
-  echo "Usage: pkg [-i|-l|-c] name"
-  echo "               name : display the informations without installation" 
-  echo "            -i name : install the last version of this package (based on /)"
-  echo "            -I name : idem (based on $SAFEBIN)" 
-  echo "            -l [name] : list all the packages, beginning with [name]"
-  echo "            -c name [path] : create the dev tree"    
-  echo "            -p [name] : pack the current directory and store it as name [default : path name]"
-  echo "            -t [name] : table-of-content of package name"
-  exit
-fi
+help () {
+ if [ -z $1 ] || [ $1 = "-h" ]
+ then
+   echo "Simple package handler ----------------------------------------------- $VERSION"
+   echo "Use root based TGZ packages (stored in $STORE)"
+   echo "Usage: pkg [-i|-l|-c] name"
+   echo "               name : display the informations without installation" 
+   echo "            -i name : install the last version of this package (based on /)"
+   echo "            -I name : idem (based on $SHARED)" 
+   echo "            -l [name] : list all the packages, beginning with [name]"
+   echo "            -c name [path] : create the dev tree"    
+   echo "            -p [name] : pack the current directory and store it as name [default : path name]"
+   echo "            -t [name] : table-of-content of package name"
+   echo "TODO : add pkg.prolog & pkg.epilog"
+   exit
+ fi
+}
 
-if [ $1 = "-i" ]
-then
-  MODE=install
-  TARG=$2
-fi
-
-if [ $1 = "-I" ]
-then
-  MODE=INSTALL
-  TARG=$2
-fi
-
-if [ $1 = "-l" ]
-then
-  MODE=list
-  TARG=$2
-fi
-
-if [ $1 = "-t" ]
-then
-  MODE=toc
-  TARG=$2
-fi
-
-if [ $1 = "-p" ]
-then
-  MODE=pack
-  TARG=$2
-fi
-
-if [ $1 = "-c" ]
-then
-  MODE=create
-  TARG=$2
-  PTH=$3
-fi
+init () {
+ case $1 in
+  -i)
+    MODE=install
+    TARG=$2
+  ;;
+  -I)
+    MODE=INSTALL
+    TARG=$2
+    ;;
+  -l)
+    MODE=list
+    TARG=$2
+    ;;
+  -t)
+    MODE=toc
+    TARG=$2
+    ;;
+  -p)
+    MODE=pack
+    TARG=$2
+    ;;
+  -c)
+    MODE=create
+    TARG=$2
+    PTH=$3
+    ;;
+ esac
+}
 
 # -----------------------------------------------
+#    MAIN
+# -----------------------------------------------
 
-LAST=$( ls $PKG/$TARG* | tail -1 )
-echo "Node=$NODE PkgDir=$PKG"
+init $*
+
+LAST=$( ls $STORE/$TARG* | tail -1 )
+echo "Node=$NODE PkgDir=$STORE"
 echo "Last $TARG is $LAST"
 
+if [ $MODE = 'debug' ]
+then
+     help
+     exit
+fi
 if [ $MODE = 'list' ]
 then
-     ls -l $PKG/$TARG*tgz  # works for TARG=''
+     ls -l $STORE/$TARG*tgz  # works for TARG=''
      exit
 fi
 
@@ -97,7 +110,7 @@ fi
 
 if [ $MODE = 'INSTALL' ]
 then
-  cd $SAFEBIN
+  cd $SHARED
   tar -xzvf $LAST
   exit
 fi
@@ -109,7 +122,7 @@ then
     TARG=$( echo $PWD | cut -d/ -f$IDX )  # pis-aller
   fi
   TM=$( date +%y%m%d-%H%M )
-  TGZ=${PKG}/${TARG}-${TM}.tgz
+  TGZ=${STORE}/${TARG}-${TM}.tgz
   BASE=$( pwd | cut -d/ -f1-${IDX} )
   echo -n ".. saving $TGZ from $BASE (or CTRL-C) : "
   read answ 
