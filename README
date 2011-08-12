@@ -1,0 +1,23 @@
+A.EMPAIN --------------------------------------------------------------------------------------------  2011-08-08
+Environment to maintain the shared scripts between computing nodes, NASes and front-end
+To have some help, try 'pkg -h'
+
+PREFIX=/opt/pkg
+Each package is directly developped on the top of PREFIX, following the real tree where it will be installed
+Ex: package 'pkg' (one script) : /PREFIX/PACKAGE/usr/local/sbin/(the script)
+     the script will be developped at /opt/pkg/pkg/usr/local/sbin
+
+* Init the package :
+  pkg -c PACKAGE [path: default to 'usr/local/sbin' ] 
+  cd PREFIX/PACKAGE/path
+  
+* Edit the script(s),
+
+* Pack and save the package, anywhere from the package tree : 'pkg -p'
+ 
+* list the result : 'pkg -l PACKAGE'
+
+* or get the table-of-content of the PACKAGE : 'pkg -t PACKAGE'
+
+Git : cd $PREFIX; git init; git add .
+
