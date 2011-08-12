@@ -1,100 +1,198 @@
-VERSION=AE:2011-08-08
+#!/bin/bash
 
-# ---------------------------------- Config -----------------------------------------------
-   SAFEBIN='/home/safe'  # where to share the executables, in place to local '/'
-   PREFIX='/opt/pkg'     # where to develop the packages, with  git control
-   IDX=4                 # to find the package name (for cut -d/ -fIDX 
-                         #    ex /opt/pkg/PACKAGE, IDX=4 : 1/2:opt/3:pkg/4:PACKAGE
-# -----------------------------------------------------------------------------------------
 
+VERSION=AE:2011-08-12
+
+CONF='/etc/pkg.conf'
+MARKER='DEV_ROOT';           # must exist within the development root directory
+
+checkConfig () {
+	if [ ! -f $CONF ]
+	then
+	  NEWCONF='/tmp/pkg.conf'
+	  # help
+	  echo "**** WARNING : $CONF is not found; a new one is created as $NEWCONF : please, edit it and copy it as an executable 755 $NEWCONF"
+      echo "# -----------------------------Package Config, version $VERSION ------------------------------------" >  $NEWCONF
+      echo "LOCAL='/'                    # where to install from (default to '/'"                                 >> $NEWCONF
+      echo "SHARED='/home/safe'          # where to share the executables, in place to local '/', like '/mnt/nfs'"  >> $NEWCONF
+      echo "STORE='/home/alain/pkg'      # where to store the packages (shared if possible /home/safe/ROCKS/pkg)" >> $NEWCONF
+      echo "# --------------------------------------------------------------------------------------------------" >> $NEWCONF
+      echo "echo \"Conf: Local:\$LOCAL, Shared:\$SHARED, Store:\$STORE\" " >> $NEWCONF
+      exit 1
+      
+     else
+        . $CONF
+     fi
+}
+
+# -- TODO : create a symbolic link on nas01 to avoid this :
 NODE=$( uname -n | cut -d. -f1 )
 if [ $NODE = 'nas01' ]
 then
-  PKG=/safe/ROCKS/pkg  
+  STORE=/safe/ROCKS/pkg  
 else
-  PKG=/home/safe/ROCKS/pkg
+  STORE=/home/safe/ROCKS/pkg
 fi
 
 # ----------------
+
 MODE=debug
 
-if [ -z $1 ] || [ $1 = "-h" ]
-then
-  echo "PKG handler ----------------------------------------------- AE 2011-08"
-  echo "Simple installer of root based TGZ packages (stored in $PKG)"
-  echo "Usage: pkg [-i|-l|-c] name"
-  echo "               name : display the informations without installation" 
-  echo "            -i name : install the last version of this package (based on /)"
-  echo "            -I name : idem (based on $SAFEBIN)" 
-  echo "            -l [name] : list all the packages, beginning with [name]"
-  echo "            -c name [path] : create the dev tree"    
-  echo "            -p [name] : pack the current directory and store it as name [default : path name]"
-  echo "            -t [name] : table-of-content of package name"
-  exit
-fi
 
-if [ $1 = "-i" ]
-then
-  MODE=install
-  TARG=$2
-fi
+findName () {   # obsolete, ex of string handling
+  PTR=$( expr match $PWD $DEVEL )
+  PKG=${PWD:$PTR}	
+  PKGNAME=$( echo $PKG | cut -d/ -f2 )	
+  
+  if [ $MODE = 'debug' ]
+  then
+     echo "PWD=$PWD"
+     echo "DEVEL=$DEVEL"
+     echo "   PTR:$PTR PKG=$PKG ----> NAME=$PKGNAME"
+  fi
+}
 
-if [ $1 = "-I" ]
-then
-  MODE=INSTALL
-  TARG=$2
-fi
+checkRoot ()  {
+  if [ ! -f $MARKER ]
+  then
+    echo "----------------------------------------------------------"
+    echo "Warning : the development root directory must contain a file marker $MARKER"
+    read -p " Create it now at $PWD y/[n] : " answ
+    if [ -z $answ ] || [ $answ = 'n' ]
+    then
+       echo "Aborted..." 1>&2
+       exit 2
+    fi
+    date > $MARKER
+  fi	
+  # ---
+  
+}
 
-if [ $1 = "-l" ]
-then
-  MODE=list
-  TARG=$2
-fi
+identifyPackage ()  {
+  BASE=''
+  # checkRoot
+  for i in $( seq 1 10)
+  do
+    PTH=$( pwd | cut -d/ -f1-$i )
+    # echo -- $i : $PTH
+    if [ -f $PTH/$MARKER ]
+    then
+       BASE=$PTH
+       ptr=$(( $i + 1 ))
+       NAME=$( pwd | cut -d/ -f$ptr )
+	   # echo "Found: Base=$BASE Name:$NAME"
+       return
+    fi
+  done	
+}
+	
+help () {
+ if [ -z $1 ] || [ $1 = "-h" ]
+ then
+   echo "Simple package handler ----------------------------------------------- $VERSION"
+   echo "Use root based TGZ packages (stored in $STORE)"
+   echo "Usage: pkg [option] [name] [path]"
+   echo "      the two basic actions must be started from the root development directory"
+   echo "      --init : first action, declare and initialize a new development root (with git init), for 1 or n packages"  
+   echo "      --create name [path] : for package 'name', create its dev tree  [default path=/usr/local/bin] : /\$root]/\$name/\$path"
+   echo "----------------------------------------------------------------------------------------" 
+   echo "               name : display the informations without installation" 
+   echo "            -i name : install the last version of this package (based on /)"
+   echo "            -I name : idem (based on $SHARED)" 
+   echo "            -l [name] : list all the packages, beginning with [name]"
 
-if [ $1 = "-t" ]
-then
-  MODE=toc
-  TARG=$2
-fi
+   echo "            -p [name] : pack the current directory and store it as name [default : path name]"
+   echo "            -t [name] : table-of-content of package name"
+   echo "TODO : add pkg.prolog & pkg.epilog"
+   exit
+ fi
+}
 
-if [ $1 = "-p" ]
-then
-  MODE=pack
-  TARG=$2
-fi
+init () {
+ case $1 in
+  -i)
+    MODE=install
+    TARG=$2
+  ;;
+  -I)
+    MODE=INSTALL
+    TARG=$2
+    ;;
+  -l)
+    MODE=list
+    TARG=$2
+    ;;
+  -t)
+    MODE=toc
+    TARG=$2
+    ;;
+  -p)
+    MODE=pack
+    TARG=$2
+    ;;
+  --create)
+    MODE=create
+    TARG=$2
+    PTH=$3
+    ;;
+  --init)
+    MODE=init
+ esac
+}
 
-if [ $1 = "-c" ]
-then
-  MODE=create
-  TARG=$2
-  PTH=$3
-fi
+getLast  () {
+  LAST=$( ls $STORE/$TARG* | tail -1 )
+  if [ -z $LAST ]
+  then
+    echo "LAST $TARG is invalid"
+    exit
+  fi
+  echo "Last $TARG is $LAST"
+}
 
 # -----------------------------------------------
+#    MAIN
+# -----------------------------------------------
 
+init $*
+checkConfig
+identifyPackage
+# echo $PTH
+
+
+echo "Node:$NODE PkgStore:$STORE     DevBase:$BASE PackageName:$NAME"
+
+<<<<<<< HEAD
 LAST=$( ls $PKG/$TARG*tgz | tail -1 )
 echo "Node=$NODE PkgDir=$PKG"
 echo "Last $TARG is $LAST"
+=======
+>>>>>>> 2c6a5750cadeac29cc2591d4db2d639a6d2a4425
 
+if [ $MODE = 'debug' ]
+then
+     help
+     exit
+fi
 if [ $MODE = 'list' ]
 then
-     ls -l $PKG/$TARG*tgz  # works for TARG=''
+     ls -l $STORE/$TARG*tgz  # works for TARG=''
      exit
 fi
 
-if [ -z $LAST ]
-then
-  echo "LAST $TARG is invalid"
-  exit
-fi
 
 if [ $MODE = 'install' ]
 then
+<<<<<<< HEAD
   if [ -z $LAST ]
   then 
     echo "LAST package is empty : use 'pkg -l' to get a valid package name"
     exit
   fi 
+=======
+  getLast
+>>>>>>> 2c6a5750cadeac29cc2591d4db2d639a6d2a4425
   cd /
   tar -xzvf $LAST
   exit
@@ -102,28 +200,30 @@ fi
 
 if [ $MODE = 'INSTALL' ]
 then
+<<<<<<< HEAD
   if [ -z $LAST ]
   then 
     echo "LAST package is empty : use 'pkg -l' to get a valid package name"
     exit
   fi 
   cd $SAFEBIN
+=======
+  getLast
+  cd $SHARED
+>>>>>>> 2c6a5750cadeac29cc2591d4db2d639a6d2a4425
   tar -xzvf $LAST
   exit
 fi
 
 if [ $MODE = 'pack' ]
 then
-  if [ -z $TARG ]
-  then 
-    TARG=$( echo $PWD | cut -d/ -f$IDX )  # pis-aller
-  fi
+  identifyPackage
   TM=$( date +%y%m%d-%H%M )
-  TGZ=${PKG}/${TARG}-${TM}.tgz
-  BASE=$( pwd | cut -d/ -f1-${IDX} )
+  TGZ=${STORE}/${NAME}-${TM}.tgz
+  # BASE=$( pwd | cut -d/ -f1-${IDX} )
   echo -n ".. saving $TGZ from $BASE (or CTRL-C) : "
   read answ 
-  cd $BASE
+  cd $BASE/$NAME
   tar -czvf $TGZ *
   git commit -a 
   exit
@@ -147,11 +247,27 @@ fi
 
 if [ $MODE = 'toc' ]
 then
+  getLast
   echo
   echo "----------------------------------------------------------------------------------------------------"
   echo "TOC of $LAST"
   echo
   tar -tzvf $LAST
+  exit
+fi
 
+if [ $MODE = 'init' ]
+then
+  echo "..mark the root directory"
+  checkRoot
+  if [ ! -d '.git' ]
+  then
+    echo ".. git init"
+    git init
+  else
+    echo "a '.git' directory already exists"
+  fi
+  echo ".. git add ."
+  git add .
 fi
 
