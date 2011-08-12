@@ -72,7 +72,7 @@ fi
 
 # -----------------------------------------------
 
-LAST=$( ls $PKG/$TARG* | tail -1 )
+LAST=$( ls $PKG/$TARG*tgz | tail -1 )
 echo "Node=$NODE PkgDir=$PKG"
 echo "Last $TARG is $LAST"
 
@@ -90,6 +90,11 @@ fi
 
 if [ $MODE = 'install' ]
 then
+  if [ -z $LAST ]
+  then 
+    echo "LAST package is empty : use 'pkg -l' to get a valid package name"
+    exit
+  fi 
   cd /
   tar -xzvf $LAST
   exit
@@ -97,6 +102,11 @@ fi
 
 if [ $MODE = 'INSTALL' ]
 then
+  if [ -z $LAST ]
+  then 
+    echo "LAST package is empty : use 'pkg -l' to get a valid package name"
+    exit
+  fi 
   cd $SAFEBIN
   tar -xzvf $LAST
   exit
