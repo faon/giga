@@ -194,12 +194,13 @@ fi
 
 if [ $MODE = 'pack' ]
 then
+  identifyPackage
   TM=$( date +%y%m%d-%H%M )
   TGZ=${STORE}/${NAME}-${TM}.tgz
   # BASE=$( pwd | cut -d/ -f1-${IDX} )
   echo -n ".. saving $TGZ from $BASE (or CTRL-C) : "
   read answ 
-  cd $BASE
+  cd $BASE/$NAME
   tar -czvf $TGZ *
   git commit -a 
   exit
